@@ -41,32 +41,55 @@ export default function HomeScreen() {
       // Call the backend API (for now, we'll use placeholder until backend is deployed)
       // In production, this would be: process.env.EXPO_PUBLIC_API_URL + '/api/jokes/generate'
 
-      // TEMPORARY: Direct OpenRouter call for testing (NOT SECURE for production!)
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      // Call backend API (secure - API key is server-side only)
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://jokes-llm.vercel.app';
+      console.log('API URL:', apiUrl); // Debug log
+
+      const response = await fetch(`${apiUrl}/api/jokes/generate`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer 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',
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'mistralai/mistral-small-latest',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional comedian who creates funny, clever jokes.',
-            },
-            {
-              role: 'user',
-              content: `Generate a ${jokeType} joke about ${topic}. ${category ? `Category: ${category}.` : ''} Just return the joke, nothing else.`,
-            },
-          ],
-          temperature: 0.8,
-          max_tokens: 300,
+          topic: topic.trim(),
+          jokeType,
+          category: category || undefined,
         }),
       });
 
-      const data = await response.json();
-      const generatedJoke = data.choices[0]?.message?.content?.trim();
+      console.log('Response status:', response.status); // Debug log
+
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
+      }
+
+      // Try to parse JSON with error handling
+      let data;
+      try {
+        const responseText = await response.text();
+        console.log('Response text:', responseText.substring(0, 200)); // Debug log
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Invalid response from server');
+      }
+
+      // Handle both response formats
+      let generatedJoke;
+      if (typeof data.joke === 'string') {
+        // Backend returned fallback format: { joke: "string" }
+        generatedJoke = data.joke.trim();
+      } else if (data.joke?.content) {
+        // Backend returned full format: { joke: { content: "string", ... } }
+        generatedJoke = data.joke.content.trim();
+      } else {
+        console.error('Unexpected response format:', data);
+        throw new Error('No joke in response');
+      }
 
       if (!generatedJoke) {
         throw new Error('No joke generated');
@@ -74,20 +97,22 @@ export default function HomeScreen() {
 
       setJoke(generatedJoke);
 
-      // Save to database
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        await supabase.from('jokes').insert({
-          user_id: userData.user.id,
-          content: generatedJoke,
-          topic: topic.trim(),
-          joke_type: jokeType,
-          category: category || null,
-        });
-      }
+      // Note: Backend already saves the joke to database
     } catch (error: any) {
       console.error('Error generating joke:', error);
-      Alert.alert('Error', 'Failed to generate joke. Please try again.');
+
+      // Show more helpful error message
+      let errorMessage = 'Failed to generate joke. Please try again.';
+
+      if (error.message.includes('Server error')) {
+        errorMessage = 'Server error: ' + error.message;
+      } else if (error.message.includes('Invalid response')) {
+        errorMessage = 'The server returned an invalid response. Please check your connection.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Cannot reach the server. Please check your internet connection.';
+      }
+
+      Alert.alert('Error generating joke', errorMessage);
     } finally {
       setLoading(false);
     }

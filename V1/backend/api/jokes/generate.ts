@@ -65,10 +65,16 @@ export default async function handler(
 
     if (dbError) {
       console.error('Error saving joke:', dbError);
-      // Still return the joke even if saving fails
+      // Return consistent format even if saving fails
       return res.status(200).json({
-        joke: result.joke,
-        warning: 'Joke generated but not saved',
+        joke: {
+          content: result.joke,
+          topic,
+          joke_type: jokeType,
+          category,
+          model_used: result.modelUsed,
+          warning: 'Joke generated but not saved to history',
+        },
       });
     }
 
