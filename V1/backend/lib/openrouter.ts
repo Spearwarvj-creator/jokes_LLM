@@ -5,8 +5,8 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Recommended models for joke generation (in order of cost)
 const JOKE_MODELS = [
-  'mistralai/mistral-small-latest', // Best balance of quality & cost
-  'meta-llama/llama-3.1-8b-instruct', // Fallback option
+  'x-ai/grok-3-mini', // Fast and reliable for joke generation
+  'openai/gpt-3.5-turbo', // Fallback option
 ];
 
 interface JokeGenerationParams {
@@ -116,8 +116,8 @@ function buildJokePrompt(topic: string, jokeType: string, category?: string): st
 function calculateCost(model: string, tokens: number): number {
   // Approximate cost per 1k tokens (you should update these based on actual rates)
   const costPer1kTokens: Record<string, number> = {
-    'mistralai/mistral-small-latest': 0.001,
-    'meta-llama/llama-3.1-8b-instruct': 0.0002,
+    'x-ai/grok-3-mini': 0.0005,
+    'openai/gpt-3.5-turbo': 0.0015,
   };
 
   const rate = costPer1kTokens[model] || 0.001;
