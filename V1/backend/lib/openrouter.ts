@@ -60,7 +60,16 @@ export async function generateJoke(params: JokeGenerationParams) {
         costUsd: calculateCost(model, usage?.total_tokens || 0),
       };
     } catch (error: any) {
-      console.error(`Model ${model} failed:`, error.response?.data || error.message);
+      const errorDetails = {
+        model,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        apiKeyPresent: !!OPENROUTER_API_KEY,
+        apiKeyPrefix: OPENROUTER_API_KEY?.substring(0, 10),
+      };
+      console.error(`Model ${model} failed:`, JSON.stringify(errorDetails, null, 2));
       // Try next model
       continue;
     }
