@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabase } from '../../lib/supabase-client';
 import { supabaseAdmin } from '../../lib/supabase-admin';
 import { generateJoke } from '../../lib/openrouter';
 
@@ -20,8 +21,9 @@ export default async function handler(
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Verify token with Supabase
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    // Verify token with Supabase using regular client (anon key)
+    // This is the correct way to validate user JWT tokens
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid token' });
